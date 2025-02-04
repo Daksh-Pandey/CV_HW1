@@ -7,14 +7,18 @@ from torchvision.transforms import v2
 import numpy as np
 from sklearn.model_selection import train_test_split
 from matplotlib import pyplot as plt
+from typing import Tuple
+from tqdm import tqdm
+from loguru import logger
 import wandb
 
 wandb.login()
 wandb.init(
     project='CV_HW1',
-    entity='daksh21036',
+    entity='daksh21036-indraprastha-institute-of-information-technol',
+    name='Image_Classification',
     config={
-        'learning_rate': 1e-3,
+        'learning_rate': 1e-4,
         'epochs': 10,
         'batch_size': 64,
         'dataset': 'RussianWildLifeDataset',
@@ -40,14 +44,15 @@ class RussianWildLifeDataset(Dataset):
         for class_dir in os.scandir(self.path):
             self.imgs_labels.extend([(img, CLASS_LABELS[class_dir.name]) for img in os.scandir(class_dir)])
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.imgs_labels)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, int]:
         img, label = self.imgs_labels[idx]
         img = read_image(img.path)
         if self.transform:
             img = self.transform(img)
+        img /= 255.0
         if self.target_transform:
             label = self.target_transform(label)
         return img, label
@@ -55,10 +60,13 @@ class RussianWildLifeDataset(Dataset):
     def labels_as_np_array(self):
         return np.array([label for img, label in self.imgs_labels])
     
-transform = v2.Resize(96, 96)
+transform = v2.Compose([
+    v2.Resize(size=(96,96)),
+    v2.ToDtype(torch.float32),
+])
 
 dataset = RussianWildLifeDataset(transform=transform)
-train_idx, val_idx = train_test_split(np.arange(len(dataset)), val_size=0.2, random_state=42,
+train_idx, val_idx = train_test_split(np.arange(len(dataset)), test_size=0.2, random_state=42,
                                        shuffle=True, stratify=dataset.labels_as_np_array())
 train_dataset = Subset(dataset, train_idx)
 val_dataset = Subset(dataset, val_idx)
@@ -91,11 +99,14 @@ def visualize_distribution(dataset=dataset, train_idx=train_idx, val_idx=val_idx
     ax.set_title('Number of val and val images by species')
 
     plt.savefig(plotname)
+    logger.info(f"Saved distribution plot image in Classification/{plotname}")
 
 visualize_distribution()
 
 class ConvNet(nn.Module):
-    def __init__(self):
+    def __init__(self, input_mlp_dim, num_classes):
+        super(ConvNet, self).__init__()
+
         self.conv_layers = nn.Sequential(
             nn.Conv2d(3, 32, 3, padding=1),
             nn.ReLU(),
@@ -109,16 +120,11 @@ class ConvNet(nn.Module):
         )
         self.flatten = nn.Flatten()
         self.linear_layers = nn.Sequential(
-            nn.Linear(4608, 2048),
+            nn.Linear(input_mlp_dim, 1024),
             nn.ReLU(),
-            nn.Linear(2048, 1024),
+            nn.Linear(1024, 256),
             nn.ReLU(),
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Linear(512, 128),
-            nn.ReLU(),
-            nn.Linear(128, 10),
-            nn.ReLU(),
+            nn.Linear(256, num_classes),
         )
 
     def forward(self, x):
@@ -127,18 +133,20 @@ class ConvNet(nn.Module):
         x = self.linear_layers(x)
         return x
 
-def train_and_val_loop(train_loader: DataLoader,
-                       val_loader: DataLoader, 
-                       model: nn.Module, 
-                       loss_fn: nn.modules.loss._Loss,
-                       optimizer: torch.optim.Optimizer,
-                       config=config):
+
+convnet_model = ConvNet(input_mlp_dim=4608, num_classes=10)
+
+def train_and_val_loop(train_loader: DataLoader, val_loader: DataLoader, 
+                       model: nn.Module, config=config):
     lr = config.learning_rate
     num_epochs = config.epochs
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model.to(device)
+    loss_fn = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    logger.info('Loaded model: ConvNet')
 
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs)):
         model.train()
         train_loss = 0.0
         correct_train = 0
@@ -163,4 +171,33 @@ def train_and_val_loop(train_loader: DataLoader,
         total_val = 0
 
         with torch.no_grad():
-            
+            for inputs, labels in val_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                model_outputs = model(inputs)
+                loss = loss_fn(model_outputs, labels)
+
+                val_loss += loss.item() * inputs.size(0)
+                _, predicted = torch.max(model_outputs, 1)
+                correct_val += (predicted == labels).sum().item()
+                total_val += labels.size(0)
+
+        avg_train_loss = train_loss / total_train
+        avg_val_loss = val_loss / total_val
+        train_accuracy = 100 * correct_train / total_train
+        val_accuracy = 100 * correct_val / total_val
+
+        wandb.log(
+            {
+                'loss/Training Loss': avg_train_loss,
+                'loss/Validation Loss': avg_val_loss,
+                'accuracy/Training Accuracy': train_accuracy,
+                'accuracy/Validation Accuracy': val_accuracy,
+            }
+        )
+
+        logger.info(f"Epoch [{epoch + 1}/{num_epochs}]")
+        logger.info(f"Training Loss: {avg_train_loss:.4f}, Validation Loss: {avg_val_loss:.4f}")
+        logger.info(f"Training Accuracy: {train_accuracy:.2f}%")
+        logger.info(f"Validation Accuracy: {val_accuracy:.2f}%")
+
+train_and_val_loop(train_dataloader, val_dataloader, convnet_model, config)

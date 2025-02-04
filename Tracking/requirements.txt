@@ -1,0 +1,6 @@
+scipy
+numpy==1.26
+torch
+lap
+motmetrics
+opencv-python

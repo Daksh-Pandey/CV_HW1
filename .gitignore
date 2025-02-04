@@ -1,0 +1,5 @@
+data/**
+Tracking/train/**
+Segmentation/encoder_model.pth
+Detection/yolov8x.pt
+Detection/yolov8n.pt

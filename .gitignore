@@ -2,4 +2,7 @@ data/**
 Tracking/train/**
 **/*.pth
 **/*.pt
-Classification/wandb/**
+**/wandb/**
+Segmentation/images_per_class_train/**
+Classification/misclassified*/**
+**/__pycache__/**

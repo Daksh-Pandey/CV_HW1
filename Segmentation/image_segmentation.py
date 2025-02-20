@@ -1,6 +1,5 @@
 import os
 import torch
-from torch import nn
 from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
 from matplotlib import patches as mpatches
@@ -18,6 +17,13 @@ wandb.login()
 batch_size = 8
 
 def wandb_init_model(model_name: str):
+    '''
+    Initializes wandb for the model
+    Parameters:
+        model_name (str): Name of the model
+    Returns:
+        wandb.config: Configuration object for the model
+    '''
     wandb.init(
         project='CV_HW1',
         entity='daksh21036-indraprastha-institute-of-information-technol',
@@ -37,9 +43,16 @@ ROLLNO = 2021036
 torch.manual_seed(ROLLNO)
 rng = np.random.default_rng(ROLLNO)
 
-def make_and_clean_dir(dir_name: str):
-    os.makedirs(dir_name, exist_ok=True)
-    for file in os.scandir(dir_name):
+def make_and_clean_dir(dir_path: str):
+    '''
+    Creates a directory if it does not exist and cleans it if it does
+    Parameters:
+        dir_name (str): Name of the directory
+    Returns:
+        None
+    '''
+    os.makedirs(dir_path, exist_ok=True)
+    for file in os.scandir(dir_path):
         os.remove(file.path)
 
 CLASS_NAMES = list(COLOR_DICT.keys())
@@ -66,6 +79,13 @@ logger.info('Test images and masks loaded')
 
 
 def visualize_distribution(plotname='distribution_plot.png'):
+    '''
+    Visualizes the distribution of classes in the dataset
+    Parameters:
+        plotname (str): Name of the plot file to save the distribution plot
+    Returns:
+        None
+    '''
     cnt_classes_train = {k: len(v) for k, v in images_per_class_train.items()}
     cnt_classes_test = {k: len(v) for k, v in images_per_class_test.items()}
 
@@ -90,6 +110,17 @@ def visualize_distribution(plotname='distribution_plot.png'):
 
 def visualize_images_per_class(images_per_class: dict, camvid_dataset: CamVidDataset,
                                num_images=2, save_dir='images_per_class'):
+    '''
+    Visualizes num_images images for each class in images_per_class
+    Parameters:
+        images_per_class (dict): Dictionary containing class names as keys and 
+            list of indices of images belonging to that class as values
+        camvid_dataset (CamVidDataset): Dataset object containing images and masks
+        num_images (int): Number of images to visualize for each class
+        save_dir (str): Directory to save the visualized images
+    Returns:
+        None    
+    '''
     make_and_clean_dir(save_dir)
 
     for class_name, indices in images_per_class.items():
@@ -131,6 +162,18 @@ visualize_images_per_class(images_per_class_train, camvid_dataset_train, save_di
 def train_and_val_loop(train_loader: DataLoader, val_loader: DataLoader, 
                        model: Union[SegNet_Pretrained, DeepLabV3], model_name:str, save_model_as: str, 
                        vis_images_dir: str):
+    '''
+    Trains and validates the model for num_epochs epochs
+    Parameters:
+        train_loader (DataLoader): DataLoader object for training dataset
+        val_loader (DataLoader): DataLoader object for validation dataset
+        model (Union[SegNet_Pretrained, DeepLabV3]): Model object to train
+        model_name (str): Name of the model
+        save_model_as (str): Name of the file to save the model state_dict
+        vis_images_dir (str): Directory to save the visualized images
+    Returns:
+        None
+    '''
     config = wandb_init_model(model_name)
     lr = config.learning_rate
     num_epochs = config.epochs

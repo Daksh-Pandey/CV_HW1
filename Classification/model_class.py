@@ -32,11 +32,11 @@ class ConvNet(nn.Module):
 
 
 class ResNet18(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes=10):
         super(ResNet18, self).__init__()
-        self.backbone = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
-        in_ftrs = self.backbone.fc.in_features
-        self.backbone.fc = nn.Linear(in_ftrs, num_classes)
+        self.model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+        in_ftrs = self.model.fc.in_features
+        self.model.fc = nn.Linear(in_ftrs, num_classes)
 
     def forward(self, x):
         return self.model(x)

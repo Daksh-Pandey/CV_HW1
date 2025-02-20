@@ -3,32 +3,24 @@ import numpy as np
 import pandas as pd
 import pickle
 import torch
-
-
 import motmetrics as mm
-
 import os
-
 import time
 from byte.byte_tracker import BYTETracker
 from IOU_Tracker import IOUTracker
 
 
-
-
-
 def get_image_frames(image_dir):
     """
     Reads frames (images) from a directory.
-
     Args:
         image_dir (str): Path to the directory containing images.
 
     Returns:
         list: A list of image frames (numpy arrays).
     """
-    
-    image_files = sorted([os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.endswith(('.jpg', '.png', '.jpeg'))])
+    image_files = sorted([os.path.join(image_dir, f) for f in os.listdir(image_dir) 
+                          if f.endswith(('.jpg', '.png', '.jpeg'))])
     
     if not image_files:
         print(f"No images found in {image_dir}.")

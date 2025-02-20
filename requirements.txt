@@ -1,0 +1,15 @@
+torch
+torchvision
+numpy
+scikit-learn
+matplotlib
+seaborn
+tqdm
+loguru
+wandb
+pytest
+pandas
+ultralytics
+tidecv
+pycocotools
+cuml-cu12   # change 12 for your version of cuda

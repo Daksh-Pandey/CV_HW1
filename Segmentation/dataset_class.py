@@ -6,7 +6,7 @@ from torchvision.transforms import v2, Normalize
 import numpy as np
 import pandas as pd
 
-DATA_DIR = '/home/ip_arul/daksh21036/CV/HW1/2021036_HW1/data/CamVid'
+DATA_DIR = '../data/CamVid'
 
 COLOR_DF = pd.read_csv(os.path.join(DATA_DIR, 'class_dict.csv'))
 COLOR_DICT = {row['name']: torch.tensor(row[['r', 'g', 'b']].to_numpy(dtype=np.uint8)).view(3, 1, 1)
@@ -14,6 +14,14 @@ COLOR_DICT = {row['name']: torch.tensor(row[['r', 'g', 'b']].to_numpy(dtype=np.u
 
 
 def rgb_to_class(rgb: torch.Tensor, color_dict: dict = COLOR_DICT) -> torch.Tensor:
+    '''
+    Convert RGB image to class index mask
+    Parameters:
+        rgb (torch.Tensor): shape (3, H, W)
+        color_dict (dict): mapping class name to RGB color
+    Returns:
+        class_mask (torch.Tensor): shape (H, W), dtype torch.long
+    '''
     h, w = rgb.shape[1:]
     class_mask = torch.zeros(h, w, dtype=torch.long)
     for i, color in enumerate(color_dict.values()):
@@ -23,6 +31,14 @@ def rgb_to_class(rgb: torch.Tensor, color_dict: dict = COLOR_DICT) -> torch.Tens
 
 
 def class_to_rgb(class_mask: torch.Tensor, color_dict: dict = COLOR_DICT) -> torch.Tensor:
+    '''
+    Convert class index mask to RGB image
+    Parameters:
+        class_mask (torch.Tensor): shape (H, W), dtype torch.long
+        color_dict (dict): mapping class name to RGB color
+    Returns:
+        rgb (torch.Tensor): shape (3, H, W)
+    '''
     h, w = class_mask.shape
     rgb = torch.zeros(3, h, w)
     for i, color in enumerate(color_dict.values()):
